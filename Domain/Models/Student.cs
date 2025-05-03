@@ -21,5 +21,5 @@ public class Student
 	public DateTime RegistrationDate { get; set; } = DateTime.UtcNow;
 
 	[MaxLength(512)]
-	public string Photo { get; set; } = "/";
+	public string Photo { get; set; }
 }

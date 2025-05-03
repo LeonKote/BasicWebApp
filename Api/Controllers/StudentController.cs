@@ -16,7 +16,7 @@ public class StudentController : ControllerBase
 	}
 
 	[HttpPost]
-	public async Task<IActionResult> AddStudent([FromForm] StudentRequest studentRequest, IFormFile file)
+	public async Task<IActionResult> AddStudent([FromForm] StudentRequest studentRequest, IFormFile? file)
 	{
 		var result = await studentService.AddStudentAsync(studentRequest, file);
 		if (result.IsSuccess)
@@ -43,7 +43,7 @@ public class StudentController : ControllerBase
 	}
 
 	[HttpPut("{studentId}")]
-	public async Task<IActionResult> UpdateStudent(Guid studentId, [FromForm] StudentRequest studentRequest, IFormFile file)
+	public async Task<IActionResult> UpdateStudent(Guid studentId, [FromForm] StudentRequest studentRequest, IFormFile? file)
 	{
 		var result = await studentService.UpdateStudentAsync(studentId, studentRequest, file);
 		if (result.IsSuccess)

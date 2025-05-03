@@ -21,33 +21,38 @@ public class StudentService : IStudentService
 		this.config = config;
 	}
 
-	public async Task<Result<string>> AddStudentAsync(StudentRequest studentRequest, IFormFile file)
+	public async Task<Result<string>> AddStudentAsync(StudentRequest studentRequest, IFormFile? file)
 	{
 		var student = new Student
 		{
 			Name = studentRequest.Name,
 			Email = studentRequest.Email,
 			Document = studentRequest.Document,
-			Phone = studentRequest.Phone
+			Phone = studentRequest.Phone,
+			Photo = file == null ? "media/photo/nophoto.png" : "/"
 		};
 
 		await studentRepository.AddStudentAsync(student);
 
-		var urlPath = $"media/photo/{student.Id}{Path.GetExtension(file.FileName)}";
-
-		using var stream = new MemoryStream();
-		await file.CopyToAsync(stream);
-
-		await s3Client.PutObjectAsync(new PutObjectRequest
+		if (file != null)
 		{
-			BucketName = config["AWS:BucketName"],
-			Key = urlPath,
-			InputStream = stream
-		});
+			var urlPath = $"media/photo/{student.Id}{Path.GetExtension(file.FileName)}";
 
-		student.Photo = "/" + urlPath;
+			using var stream = new MemoryStream();
+			await file.CopyToAsync(stream);
 
-		await studentRepository.UpdateStudentAsync(student);
+			await s3Client.PutObjectAsync(new PutObjectRequest
+			{
+				BucketName = config["AWS:BucketName"],
+				Key = urlPath,
+				InputStream = stream
+			});
+
+			student.Photo = urlPath;
+
+			await studentRepository.UpdateStudentAsync(student);
+		}
+		
 		return Result<string>.Success("Ok");
 	}
 
@@ -61,35 +66,39 @@ public class StudentService : IStudentService
 		return Result<Student?>.Success(await studentRepository.GetStudentByIdAsync(studentId));
 	}
 
-	public async Task<Result<string>> UpdateStudentAsync(Guid studentId, StudentRequest studentRequest, IFormFile file)
+	public async Task<Result<string>> UpdateStudentAsync(Guid studentId, StudentRequest studentRequest, IFormFile? file)
 	{
 		var student = await studentRepository.GetStudentByIdAsync(studentId);
 		if (student == null)
 			return Result<string>.Failure("Student does not exist");
 
-		await s3Client.DeleteObjectAsync(new DeleteObjectRequest
-		{
-			BucketName = config["AWS:BucketName"],
-			Key = student.Photo[1..],
-		});
-
-		var urlPath = $"media/photo/{student.Id}{Path.GetExtension(file.FileName)}";
-
-		using var stream = new MemoryStream();
-		await file.CopyToAsync(stream);
-
-		await s3Client.PutObjectAsync(new PutObjectRequest
-		{
-			BucketName = config["AWS:BucketName"],
-			Key = urlPath,
-			InputStream = stream
-		});
-
 		student.Name = studentRequest.Name;
 		student.Email = studentRequest.Email;
 		student.Document = studentRequest.Document;
 		student.Phone = studentRequest.Phone;
-		student.Photo = "/" + urlPath;
+
+		if (file != null)
+		{
+			await s3Client.DeleteObjectAsync(new DeleteObjectRequest
+			{
+				BucketName = config["AWS:BucketName"],
+				Key = student.Photo,
+			});
+
+			var urlPath = $"media/photo/{student.Id}{Path.GetExtension(file.FileName)}";
+
+			using var stream = new MemoryStream();
+			await file.CopyToAsync(stream);
+
+			await s3Client.PutObjectAsync(new PutObjectRequest
+			{
+				BucketName = config["AWS:BucketName"],
+				Key = urlPath,
+				InputStream = stream
+			});
+
+			student.Photo = urlPath;
+		}
 
 		await studentRepository.UpdateStudentAsync(student);
 		return Result<string>.Success("Ok");
@@ -104,7 +113,7 @@ public class StudentService : IStudentService
 		await s3Client.DeleteObjectAsync(new DeleteObjectRequest
 		{
 			BucketName = config["AWS:BucketName"],
-			Key = student.Photo[1..]
+			Key = student.Photo
 		});
 
 		await studentRepository.DeleteStudentAsync(student);
