@@ -22,7 +22,7 @@ public class StudentRepository : IStudentRepository
 
 	public async Task<List<Student>> GetStudentListAsync()
 	{
-		return await context.Students.ToListAsync();
+		return await context.Students.OrderBy(x => x.Id).ToListAsync();
 	}
 
 	public async Task<Student?> GetStudentByIdAsync(Guid studentId)
